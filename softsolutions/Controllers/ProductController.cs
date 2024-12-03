@@ -21,21 +21,19 @@ namespace softsolutions.Controllers
                 .Include(x => x.Providers)
                 .Include(x => x.Categories);
         }
-    }
-    
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Product>> GetById(AppDbContext context, int id)
-    {
-        var product = await context.Product
-            .Include(x => x.Providers)
-            .Include(x => x.Categories)
-            .FirstOrDefaultAsync(x => x.Id == id);
-        if (product == null)
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Product>> GetById(AppDbContext context, int id)
         {
-            return NotFound();
+            var product = await context.Product
+                .Include(x => x.Providers)
+                .Include(x => x.Categories)
+                .FirstOrDefaultAsync(x => x.Id == id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+            return product;
         }
-        return product;
     }
-    
-    
 }
