@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,62 +13,63 @@ namespace softsolutions.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ProductController : ControllerBase
+    public class ProviderController : ControllerBase
     {
-        private bool ProductExists(AppDbContext context, int id)
+        private bool ProviderExists(AppDbContext context, int id)
         {
-            return context.Product.Any(e => e.Id == id);
+            return context.Provider.Any(e => e.Id == id);
         }
         
         [HttpGet]
-        public IEnumerable<Product> GetAll(AppDbContext context)
+        public IEnumerable<Provider> GetAll(AppDbContext context)
         {
-            return context.Product
-                .Include(x => x.Providers)
-                .Include(x => x.Categories);
+            return context.Provider
+                .Include(x => x.Products);
         }
-
+        
         [HttpGet("{id}")]
-        public async Task<ActionResult<Product>> GetById(AppDbContext context, int id)
+        public async Task<ActionResult<Provider>> GetById(AppDbContext context, int id)
         {
-            var product = await context.Product
-                .Include(x => x.Providers)
-                .Include(x => x.Categories)
+            var provider = await context.Provider
+                .Include(x => x.Products)
                 .FirstOrDefaultAsync(x => x.Id == id);
-            if (product == null)
+            if (provider == null)
             {
                 return NotFound();
             }
-            return product;
+            return provider;
         }
         
         [HttpPost]
-        public async Task<ActionResult<Product>> Create(AppDbContext context, Product product)
+        public async Task<ActionResult<Provider>> Create(AppDbContext context, Provider provider)
         {
-            context.Product.Add(product);
+            context.Provider.Add(provider);
             await context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+            return CreatedAtAction(nameof(GetById), new { id = provider.Id }, provider);
         }
         
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(AppDbContext context, int id, Product product)
+        public async Task<IActionResult> Update(AppDbContext context, int id, Provider provider)
         {
-            if (id != product.Id)
+            if (id != provider.Id)
             {
                 return BadRequest();
             }
-            context.Entry(product).State = EntityState.Modified;
+            context.Entry(provider).State = EntityState.Modified;
             try
             {
                 await context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!ProductExists(context, id))
+                if (!ProviderExists(context, id))
                 {
                     return NotFound();
                 }
-                throw;
+                else
+                {
+                    throw;
+                }
             }
             return NoContent();
         }
@@ -75,12 +77,12 @@ namespace softsolutions.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(AppDbContext context, int id)
         {
-            var product = await context.Product.FindAsync(id);
-            if (product == null)
+            var provider = await context.Provider.FindAsync(id);
+            if (provider == null)
             {
                 return NotFound();
             }
-            context.Product.Remove(product);
+            context.Provider.Remove(provider);
             await context.SaveChangesAsync();
             return NoContent();
         }

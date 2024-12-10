@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,60 +11,59 @@ using softsolutions.Models;
 
 namespace softsolutions.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
-    public class ProductController : ControllerBase
+    public class CategoryController : ControllerBase
     {
-        private bool ProductExists(AppDbContext context, int id)
+        private bool CategoryExists(AppDbContext context, int id)
         {
-            return context.Product.Any(e => e.Id == id);
+            return context.Category.Any(e => e.Id == id);
         }
         
         [HttpGet]
-        public IEnumerable<Product> GetAll(AppDbContext context)
+        public IEnumerable<Category> GetAll(AppDbContext context)
         {
-            return context.Product
-                .Include(x => x.Providers)
-                .Include(x => x.Categories);
+            return context.Category
+                .Include(x => x.Products);
         }
-
+        
         [HttpGet("{id}")]
-        public async Task<ActionResult<Product>> GetById(AppDbContext context, int id)
+        public async Task<ActionResult<Category>> GetById(AppDbContext context, int id)
         {
-            var product = await context.Product
-                .Include(x => x.Providers)
-                .Include(x => x.Categories)
+            var category = await context.Category
+                .Include(x => x.Products)
                 .FirstOrDefaultAsync(x => x.Id == id);
-            if (product == null)
+            if (category == null)
             {
                 return NotFound();
             }
-            return product;
+            return category;
         }
         
         [HttpPost]
-        public async Task<ActionResult<Product>> Create(AppDbContext context, Product product)
+        public async Task<ActionResult<Category>> Create(AppDbContext context, Category category)
         {
-            context.Product.Add(product);
+            context.Category.Add(category);
             await context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+            return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
         }
         
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(AppDbContext context, int id, Product product)
+        public async Task<IActionResult> Update(AppDbContext context, int id, Category category)
         {
-            if (id != product.Id)
+            if (id != category.Id)
             {
                 return BadRequest();
             }
-            context.Entry(product).State = EntityState.Modified;
+            context.Entry(category).State = EntityState.Modified;
             try
             {
                 await context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!ProductExists(context, id))
+                if (!CategoryExists(context, id))
                 {
                     return NotFound();
                 }
@@ -75,12 +75,12 @@ namespace softsolutions.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(AppDbContext context, int id)
         {
-            var product = await context.Product.FindAsync(id);
-            if (product == null)
+            var category = await context.Category.FindAsync(id);
+            if (category == null)
             {
                 return NotFound();
             }
-            context.Product.Remove(product);
+            context.Category.Remove(category);
             await context.SaveChangesAsync();
             return NoContent();
         }

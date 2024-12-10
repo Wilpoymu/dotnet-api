@@ -6,9 +6,14 @@ using softsolutions.Data;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
+using softsolutions.Models;
 
-var builder = WebApplication.CreateBuilder(args);
-
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    // Specify the URL and port
+    Urls = "http://localhost:5000"
+});
 
 byte[] secretBytes = new byte[64];
 using (var random = RandomNumberGenerator.Create())
@@ -45,6 +50,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost5173",
+        builder => builder.WithOrigins("http://localhost:5173", "http://localhost:5173/")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod());
+});
 
 builder.Services.AddIdentityApiEndpoints<IdentityUser>(option =>
 {
@@ -53,9 +65,12 @@ builder.Services.AddIdentityApiEndpoints<IdentityUser>(option =>
     option.Password.RequireDigit = false;
     option.Password.RequireUppercase = false;
     option.Password.RequireLowercase = false;
+    option.User.RequireUniqueEmail = true;
+    option.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+ ";
 })
     .AddEntityFrameworkStores<AppDbContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddUserManager<UserManager<IdentityUser>>();
 
 var app = builder.Build();
 
@@ -66,12 +81,35 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Remove the options parameter from the MapIdentityApi method call
 app.MapIdentityApi<IdentityUser>();
 
 app.UseHttpsRedirection();
 
+app.UseCors("AllowLocalhost5173");
+
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapPost("/create-user", async (UserManager<IdentityUser> userManager, CreateUserRequest request) =>
+{
+    if (request == null || string.IsNullOrWhiteSpace(request.Username) || 
+        string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+    {
+        return Results.BadRequest("Invalid user data provided");
+    }
+
+    var user = new IdentityUser { UserName = request.Username, Email = request.Email };
+    var result = await userManager.CreateAsync(user, request.Password);
+
+    if (result.Succeeded)
+    {
+        return Results.Ok("User created successfully");
+    }
+
+    return Results.BadRequest(result.Errors);
+});
+
 
 app.Run();
